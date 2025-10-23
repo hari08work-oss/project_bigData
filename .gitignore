@@ -1,0 +1,13 @@
+@"
+data/
+raw/
+landing/
+output/
+*.csv
+*.parquet
+*.snappy
+*.orc
+*.log
+"@ | Out-File -Encoding utf8 .gitignore
+git add .gitignore
+git commit -m "chore: add .gitignore for data files"

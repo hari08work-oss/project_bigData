@@ -1,0 +1,8 @@
+{
+  "terminal.integrated.defaultProfile.windows": "PowerShell 7",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell 7": { "path": "C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe" },
+    "Windows PowerShell": { "path": "C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe" }
+  },
+  "files.eol": "\r\n"
+}
