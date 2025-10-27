@@ -750,6 +750,115 @@
         "cwd": "C:\\HadoopDocker\\docker-hive"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Hive: Inspect source tables",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-Command",
+        "docker compose -p hadoop exec hive-server bash -lc \"/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -e 'SHOW TABLES IN source; DESCRIBE FORMATTED source.messages_pq; SELECT * FROM source.messages_pq LIMIT 10;'\""
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Hive: Curated Layer (build curated.*)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "hive-server",
+        "bash",
+        "-lc",
+        "cat >/tmp/curated.sql <<'SQL'\nCREATE DATABASE IF NOT EXISTS curated;\nUSE curated;\n\n-- 1. d_campaign\nCREATE TABLE IF NOT EXISTS d_campaign (\n  campaign STRING\n)\nSTORED AS PARQUET;\n\nINSERT OVERWRITE TABLE d_campaign\nSELECT DISTINCT campaign\nFROM source.leads_pq\nWHERE campaign IS NOT NULL AND campaign <> '';\n\n-- 2. f_interactions\nDROP TABLE IF EXISTS f_interactions;\nCREATE TABLE f_interactions\nSTORED AS PARQUET AS\nSELECT\n  lead_id,\n  created_at,\n  channel,\n  source,\n  campaign,\n  event_date\nFROM source.leads_pq;\n\n-- 3. f_bookings\nDROP TABLE IF EXISTS f_bookings;\nCREATE TABLE f_bookings\nSTORED AS PARQUET AS\nSELECT\n  booking_id,\n  lead_id,\n  status,\n  service,\n  revenue,\n  booked_ts,\n  event_date\nFROM source.appointments_pq;\n\n-- 4. f_messages (schema thực tế: msg_id, lead_id, channel, msg_ts, from_side, event_date)\nDROP TABLE IF EXISTS f_messages;\nCREATE TABLE f_messages\nSTORED AS PARQUET AS\nSELECT\n  msg_id      AS message_id,\n  lead_id,\n  channel,\n  msg_ts      AS message_ts,\n  from_side,\n  event_date  AS message_date\nFROM source.messages_pq;\n\n-- 5. f_ad_spend\nDROP TABLE IF EXISTS f_ad_spend;\nCREATE TABLE f_ad_spend\nSTORED AS PARQUET AS\nSELECT\n  campaign,\n  channel,\n  spend_amount,\n  currency,\n  spend_date_ts,\n  dt AS spend_date\nFROM source.ads_spend_pq\nWHERE spend_amount > 0;\nSQL\n\n/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/curated.sql;\n/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -e 'SHOW TABLES IN curated;'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Presto: SHOW + SAMPLE curated",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --catalog hive --schema curated --execute 'SHOW TABLES; SELECT booking_id, event_date, status, revenue FROM f_bookings LIMIT 10;'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Presto: DESCRIBE hive.curated.f_bookings",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --execute 'DESCRIBE hive.curated.f_bookings;'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Presto: COUNT rows in hive.curated.f_bookings",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --execute 'SELECT COUNT(*) AS row_count FROM hive.curated.f_bookings;'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Presto: SAMPLE hive.curated.f_bookings LIMIT 10",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --execute 'SELECT * FROM hive.curated.f_bookings LIMIT 10;'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Presto: KPI preview (consumption)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --execute 'SHOW TABLES FROM hive.consumption; SELECT dt, total_bookings, total_revenue FROM hive.consumption.fact_daily_bookings ORDER BY dt DESC LIMIT 10; SELECT dt, channel, from_side, total_messages FROM hive.consumption.fact_channel_messages ORDER BY dt DESC, total_messages DESC LIMIT 10; SELECT dt, channel, campaign, total_spend FROM hive.consumption.fact_daily_spend ORDER BY dt DESC, total_spend DESC LIMIT 10;'"
+      ],
+      "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
+      "problemMatcher": []
     }
         
   ]

@@ -1,12 +1,48 @@
-CREATE DATABASE IF NOT EXISTS consumption; USE consumption;
+CREATE DATABASE IF NOT EXISTS consumption;
+USE consumption;
 
-CREATE TABLE IF NOT EXISTS dim_campaign (campaign STRING, sk INT) STORED AS PARQUET;
+-- dim_campaign
+DROP TABLE IF EXISTS dim_campaign;
+CREATE TABLE dim_campaign (
+  campaign STRING,
+  sk INT
+)
+STORED AS PARQUET;
+
 INSERT OVERWRITE TABLE dim_campaign
-SELECT campaign, ROW_NUMBER() OVER (ORDER BY campaign) AS sk
-FROM (SELECT DISTINCT campaign FROM curated.d_campaign) t;
+SELECT
+  campaign,
+  ROW_NUMBER() OVER (ORDER BY campaign) AS sk
+FROM (
+  SELECT DISTINCT campaign
+  FROM curated.d_campaign
+  WHERE campaign IS NOT NULL AND campaign <> ''
+) t;
 
-CREATE TABLE IF NOT EXISTS fact_daily_spend STORED AS PARQUET AS
-SELECT a.dt, c.sk AS campaign_sk, SUM(a.spend) AS total_spend
-FROM default.src_ads_spend a
-JOIN dim_campaign c ON a.campaign=c.campaign
-GROUP BY a.dt, c.sk;
+-- fact_daily_bookings
+DROP TABLE IF EXISTS fact_daily_bookings;
+CREATE TABLE fact_daily_bookings
+STORED AS PARQUET AS
+SELECT
+  b.event_date       AS dt,
+  COUNT(*)           AS total_bookings,
+  SUM(b.revenue)     AS total_revenue
+FROM curated.f_bookings b
+GROUP BY b.event_date;
+
+-- fact_channel_messages
+DROP TABLE IF EXISTS fact_channel_messages;
+CREATE TABLE fact_channel_messages
+STORED AS PARQUET AS
+SELECT
+  m.message_date     AS dt,
+  m.channel,
+  m.from_side,
+  COUNT(*)           AS total_messages
+FROM curated.f_messages m
+GROUP BY
+  m.message_date,
+  m.channel,
+  m.from_side;
+
+SHOW TABLES IN consumption;
