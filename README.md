@@ -33,7 +33,7 @@ project_HDFS/
 
 ---
 
-## 3) Chạy đúng thứ tự (Tasks → Run Task)
+## 3) Chạy đúng thứ tự ctrl + shitf + p(Tasks → Run Task)
 
 1. **Docker: Start Desktop & wait**
 2. **Docker: Up (Hadoop+Hive)**
@@ -45,8 +45,48 @@ project_HDFS/
    → di chuyển từ `/raw/*` sang `/landing/*` (tách landing/raw)
 7. **Hive: Create landing (CSV external)**
    → tạo bảng `landing.*` đọc CSV ở `/landing/*`
+"""
 
-### 8) Chọn *một* nhánh build "source"
+
+docker compose -p hadoop exec hive-server bash -lc "
+cat >/tmp/landing_crm_leads.sql <<'SQL'
+CREATE DATABASE IF NOT EXISTS landing;
+
+DROP TABLE IF EXISTS landing.crm_leads;
+CREATE EXTERNAL TABLE landing.crm_leads (
+  idx         INT,
+  account_id  STRING,
+  lead_owner  STRING,
+  first_name  STRING,
+  last_name   STRING,
+  company     STRING,
+  phone_1     STRING,
+  phone_2     STRING,
+  email_1     STRING,
+  email_2     STRING,
+  website     STRING,
+  source      STRING,
+  deal_stage  STRING,
+  notes       STRING
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES ('separatorChar' = ',')
+STORED AS TEXTFILE
+LOCATION '/landing/leads'
+TBLPROPERTIES ('skip.header.line.count'='1');
+SQL
+
+/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/landing_crm_leads.sql
+/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -e 'SHOW TABLES IN landing;'
+"
+
+
+""""
+
+sau đó chạy    Presto: Source breakdown (CRM leads.csv)
+
+
+8. Chọn *một* nhánh build "source"
 
 **8a. Hive (không dùng Spark)**
 
@@ -77,6 +117,53 @@ project_HDFS/
   * Presto: [http://localhost:8080](http://localhost:8080)
 
 ---
+
+
+B1. Landing
+
+YARN: Up (RM/NM/HistoryServer)
+
+HDFS: mkdir /raw/*
+
+HDFS: upload raw CSV
+
+HDFS: move CSV → /landing
+
+Hive: Create landing (CSV external)
+→ sinh landing.leads_csv, kiểm tra SELECT COUNT(*).
+
+B2. Source
+6. Hive: Build source (Parquet partition y/m/d)
+→ sinh source.leads_pq, source.messages_pq, … ở dạng Parquet
+→ kiểm tra DESCRIBE FORMATTED source.leads_pq.
+
+B3. Curated
+7. Hive: Curated (copy curated.sql vào container)
+8. Hive: run Curated SQL
+→ sinh curated.f_interactions (fact chuẩn hoá cho sales)
+→ kiểm tra SELECT * FROM curated.f_interactions LIMIT 10.
+
+B4. Consumption / KPI
+9. Consumption: Build Marketing Fact Table
+→ sinh consumption.f_marketing (Parquet, business-ready)
+10. Consumption: Preview 10 rows
+11. KPI: Leads per Sales Owner
+12. KPI: Leads per Campaign
+→ chụp màn hình KPI để đưa vào báo cáo.
+
+B5. Health / Evidence
+13. Health: HDFS Layout
+→ chụp màn hình cấu trúc HDFS (landing → source.db → curated.db → consumption.db).
+14. (Optional) KPI tổng COUNT(*) FROM consumption.f_marketing
+→ chụp số tổng lead để ghi vào phần kết luận.
+
+
+
+
+
+
+
+
 
 ## 4) Kết quả mong đợi
 

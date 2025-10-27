@@ -11,3 +11,28 @@ output/
 "@ | Out-File -Encoding utf8 .gitignore
 git add .gitignore
 git commit -m "chore: add .gitignore for data files"
+# Airflow
+airflow/logs/
+airflow/*/logs/
+airflow/*.pid
+
+# Python rác
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# Tạm & hệ thống
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Spark/Hive cục bộ (nếu có)
+spark-warehouse/
+metastore_db/

@@ -66,16 +66,59 @@ def build_spark():
             .appName(APP_NAME)
             .config("spark.sql.session.timeZone", "UTC")
             .config("spark.sql.parquet.compression.codec", "snappy")
+            .config("spark.sql.sources.partitionOverwriteMode", "dynamic")  # hỗ trợ overwrite theo partition
             .getOrCreate())
 
 def read_csv(spark, path, schema):
     return (spark.read.format("csv")
             .option("header", "true")
             .option("multiLine", "false")
+            .option("mode", "DROPMALFORMED")
             .option("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss'Z'")
             .schema(schema)
             .load(path))
 
+# ---------- B1.2: Chuẩn hoá / làm sạch tối thiểu ----------
+def normalize_table(df, name, cfg):
+    # trim toàn bộ cột string, rỗng -> null
+    for f in df.schema.fields:
+        if isinstance(f.dataType, T.StringType):
+            df = df.withColumn(
+                f.name,
+                F.when(F.length(F.trim(F.col(f.name))) == 0, None)
+                 .otherwise(F.trim(F.col(f.name)))
+            )
+
+    # chuẩn hoá chung: channel về chữ thường nếu có
+    if "channel" in df.columns:
+        df = df.withColumn("channel", F.lower(F.col("channel")))
+
+    # chuẩn hoá theo bảng
+    if name == "leads":
+        # rỗng nguồn -> "Unknown"
+        if "source" in df.columns:
+            df = df.withColumn("source", F.coalesce(F.col("source"), F.lit("Unknown")))
+        df = df.dropDuplicates(["lead_id"])
+
+    elif name == "messages":
+        df = df.dropDuplicates(["msg_id"])
+
+    elif name == "appointments":
+        # đảm bảo revenue là double, null nếu không ép được
+        if "revenue" in df.columns:
+            df = df.withColumn("revenue", F.col("revenue").cast("double"))
+        df = df.dropDuplicates(["booking_id"])
+
+    elif name == "ads_spend":
+        # gộp key trùng (campaign, dt) bằng cách giữ bản đầu tiên; nếu muốn cộng dồn thì thay bằng groupBy().sum("spend")
+        df = df.dropDuplicates(["campaign", "dt"])
+
+    # bỏ các bản ghi không có timestamp/date để tránh partition null
+    df = df.filter(F.col(cfg["ts"]).isNotNull())
+
+    return df
+
+# ---------- Tạo cột partition y/m/d ----------
 def add_partitions(df, ts_col):
     df = df.withColumn("event_date", F.to_date(F.col(ts_col)))
     return (df
@@ -90,6 +133,7 @@ def get_watermark(spark, out_path, ts_col):
     except Exception:
         return None
 
+# ---------- B1.3: Ghi Parquet + Snappy, partition y/m/d ----------
 def write_parquet(df, out_path, mode):
     (df.write.mode(mode)
        .partitionBy("y","m","d")
@@ -98,6 +142,7 @@ def write_parquet(df, out_path, mode):
 def process_table(spark, name, mode):
     cfg = TABLES[name]
     df = read_csv(spark, cfg["csv"], cfg["schema"])
+    df = normalize_table(df, name, cfg)     # B1.2
     df = add_partitions(df, cfg["ts"])
 
     if mode == "FullLoad":

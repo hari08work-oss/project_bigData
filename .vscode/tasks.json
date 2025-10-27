@@ -8,7 +8,8 @@
       "command": "powershell",
       "args": [
         "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
+        "-ExecutionPolicy",
+        "Bypass",
         "-Command",
         "$dockerPath = 'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe'; Start-Process -FilePath $dockerPath -ErrorAction SilentlyContinue; $i=0; while ($i -lt 120) { docker version --format '{{.Server.Version}}' 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { Write-Host 'Docker Engine is up'; exit 0 }; Start-Sleep -Seconds 2; $i++ }; Write-Error 'Docker Engine not ready'; exit 1"
       ],
@@ -32,8 +33,11 @@
       "type": "process",
       "command": "powershell",
       "args": [
-        "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
-        "$names = docker ps -a --format '{{.Names}}'; foreach ($svc in 'resourcemanager','nodemanager','historyserver') { if ($names -notcontains $svc) { docker run -d --network hadoop_default --name $svc bde2020/hadoop-$svc:2.0.0-hadoop2.7.4-java8 } else { docker start $svc | Out-Null } }; docker ps --format 'table {{.Names}}`t{{.Status}}'"
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$names = docker ps -a --format '{{.Names}}'; foreach ($svc in 'resourcemanager','nodemanager','historyserver') { if ($names -notcontains $svc) { docker run -d --network hadoop_default --name $svc bde2020/hadoop-$svc:2.0.0-hadoop2.7.4-java8 } else { docker start $svc | Out-Null } }; docker ps --format 'table {{.Names}}t{{.Status}}'"
       ],
       "problemMatcher": []
     },
@@ -44,11 +48,17 @@
       "type": "process",
       "command": "docker",
       "args": [
-        "compose","-p","hadoop","exec","namenode","bash","-lc",
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "namenode",
+        "bash",
+        "-lc",
         "/opt/hadoop-2.7.4/bin/hdfs dfsadmin -safemode wait; /opt/hadoop-2.7.4/bin/hdfs dfs -mkdir -p /raw/leads /raw/messages /raw/appointments /raw/ads_spend; /opt/hadoop-2.7.4/bin/hdfs dfs -ls -R /raw"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
-      "dependsOn": [ "Docker: Up (Hadoop+Hive)", "YARN: Up (RM/NM/HistoryServer)" ],
+      "dependsOn": ["Docker: Up (Hadoop+Hive)", "YARN: Up (RM/NM/HistoryServer)"],
       "problemMatcher": []
     },
 
@@ -57,7 +67,7 @@
       "label": "Data: generate sample CSV",
       "type": "process",
       "command": "powershell",
-      "args": [ "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\scripts\\gen_sample.ps1" ],
+      "args": ["-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\scripts\\gen_sample.ps1"],
       "problemMatcher": []
     },
 
@@ -67,11 +77,14 @@
       "type": "process",
       "command": "powershell",
       "args": [
-        "-NoProfile","-ExecutionPolicy","Bypass","-Command",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
         "$root = Join-Path '${workspaceFolder}' 'data'; function SendToNN([string]$src,[string]$dst){ $p = Join-Path $root $src; if(Test-Path $p){ & docker compose -p hadoop -f C:\\HadoopDocker\\docker-hive\\docker-compose.yml cp $p ('namenode:' + $dst); Write-Host ('Uploaded ' + $src + ' -> ' + $dst) } else { Write-Warning ('Missing: ' + $p) } }; SendToNN 'leads.csv' '/tmp/leads.csv'; if (Test-Path (Join-Path $root 'messages.csv')) { SendToNN 'messages.csv' '/tmp/messages.csv' } elseif (Test-Path (Join-Path $root 'messages-demo.csv')) { & docker compose -p hadoop -f C:\\HadoopDocker\\docker-hive\\docker-compose.yml cp (Join-Path $root 'messages-demo.csv') 'namenode:/tmp/messages.csv' }; SendToNN 'appointments.csv' '/tmp/appointments.csv'; SendToNN 'ads_spend.csv' '/tmp/ads_spend.csv'; & docker compose -p hadoop exec namenode bash -lc '/opt/hadoop-2.7.4/bin/hdfs dfsadmin -safemode wait; /opt/hadoop-2.7.4/bin/hdfs dfs -put -f /tmp/leads.csv /raw/leads/; /opt/hadoop-2.7.4/bin/hdfs dfs -put -f /tmp/messages.csv /raw/messages/; /opt/hadoop-2.7.4/bin/hdfs dfs -put -f /tmp/appointments.csv /raw/appointments/; /opt/hadoop-2.7.4/bin/hdfs dfs -put -f /tmp/ads_spend.csv /raw/ads_spend/; /opt/hadoop-2.7.4/bin/hdfs dfs -du -h /raw'"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
-      "dependsOn": [ "HDFS: mkdir /raw/*" ],
+      "dependsOn": ["HDFS: mkdir /raw/*"],
       "problemMatcher": []
     },
 
@@ -81,7 +94,13 @@
       "type": "process",
       "command": "docker",
       "args": [
-        "compose","-p","hadoop","exec","namenode","bash","-lc",
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "namenode",
+        "bash",
+        "-lc",
         "/opt/hadoop-2.7.4/bin/hdfs dfs -mkdir -p /landing/leads /landing/messages /landing/appointments /landing/ads_spend; /opt/hadoop-2.7.4/bin/hdfs dfs -mv /raw/leads/*.csv /landing/leads/ 2>/dev/null || true; /opt/hadoop-2.7.4/bin/hdfs dfs -mv /raw/messages/*.csv /landing/messages/ 2>/dev/null || true; /opt/hadoop-2.7.4/bin/hdfs dfs -mv /raw/appointments/*.csv /landing/appointments/ 2>/dev/null || true; /opt/hadoop-2.7.4/bin/hdfs dfs -mv /raw/ads_spend/*.csv /landing/ads_spend/ 2>/dev/null || true; /opt/hadoop-2.7.4/bin/hdfs dfs -ls -R /landing /raw"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
@@ -95,7 +114,13 @@
       "type": "process",
       "command": "docker",
       "args": [
-        "compose","-p","hadoop","exec","hive-server","bash","-lc",
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "hive-server",
+        "bash",
+        "-lc",
         "cat >/tmp/landing_csv.sql <<'SQL'\nCREATE DATABASE IF NOT EXISTS landing;\n\nDROP TABLE IF EXISTS landing.leads;\nCREATE EXTERNAL TABLE landing.leads(\n  lead_id STRING, created_at TIMESTAMP, channel STRING, source STRING, campaign STRING\n)\nROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'\nWITH SERDEPROPERTIES ('separatorChar'= ',')\nSTORED AS TEXTFILE\nLOCATION '/landing/leads'\nTBLPROPERTIES('skip.header.line.count'='1');\n\nDROP TABLE IF EXISTS landing.messages;\nCREATE EXTERNAL TABLE landing.messages(\n  msg_id STRING, lead_id STRING, channel STRING, msg_ts TIMESTAMP, from_side STRING\n)\nROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'\nWITH SERDEPROPERTIES ('separatorChar'= ',')\nSTORED AS TEXTFILE\nLOCATION '/landing/messages'\nTBLPROPERTIES('skip.header.line.count'='1');\n\nDROP TABLE IF EXISTS landing.appointments;\nCREATE EXTERNAL TABLE landing.appointments(\n  booking_id STRING, lead_id STRING, booked_ts TIMESTAMP, status STRING, service STRING, revenue DOUBLE\n)\nROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'\nWITH SERDEPROPERTIES ('separatorChar'= ',')\nSTORED AS TEXTFILE\nLOCATION '/landing/appointments'\nTBLPROPERTIES('skip.header.line.count'='1');\n\nDROP TABLE IF EXISTS landing.ads_spend;\nCREATE EXTERNAL TABLE landing.ads_spend(\n  campaign STRING, dt DATE, spend DOUBLE\n)\nROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'\nWITH SERDEPROPERTIES ('separatorChar'= ',')\nSTORED AS TEXTFILE\nLOCATION '/landing/ads_spend'\nTBLPROPERTIES('skip.header.line.count'='1');\nSQL\n/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/landing_csv.sql"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
@@ -109,7 +134,13 @@
       "type": "process",
       "command": "docker",
       "args": [
-        "compose","-p","hadoop","exec","hive-server","bash","-lc",
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "hive-server",
+        "bash",
+        "-lc",
         "cat >/tmp/source_parquet.sql <<'SQL'\nSET hive.exec.dynamic.partition=true;\nSET hive.exec.dynamic.partition.mode=nonstrict;\n\nCREATE DATABASE IF NOT EXISTS source;\n\nDROP TABLE IF EXISTS source.leads_pq;\nCREATE TABLE source.leads_pq(\n  lead_id STRING, created_at TIMESTAMP, channel STRING, source STRING, campaign STRING, event_date DATE\n) PARTITIONED BY (y INT, m INT, d INT)\nSTORED AS PARQUET TBLPROPERTIES('parquet.compress'='SNAPPY');\nINSERT OVERWRITE TABLE source.leads_pq PARTITION (y,m,d)\nSELECT lead_id, created_at, channel, source, campaign,\n       DATE(created_at) AS event_date,\n       YEAR(DATE(created_at)), MONTH(DATE(created_at)), DAY(DATE(created_at))\nFROM landing.leads;\n\nDROP TABLE IF EXISTS source.messages_pq;\nCREATE TABLE source.messages_pq(\n  msg_id STRING, lead_id STRING, channel STRING, msg_ts TIMESTAMP, from_side STRING, event_date DATE\n) PARTITIONED BY (y INT, m INT, d INT)\nSTORED AS PARQUET TBLPROPERTIES('parquet.compress'='SNAPPY');\nINSERT OVERWRITE TABLE source.messages_pq PARTITION (y,m,d)\nSELECT msg_id, lead_id, channel, msg_ts, from_side,\n       DATE(msg_ts), YEAR(DATE(msg_ts)), MONTH(DATE(msg_ts)), DAY(DATE(msg_ts))\nFROM landing.messages;\n\nDROP TABLE IF EXISTS source.appointments_pq;\nCREATE TABLE source.appointments_pq(\n  booking_id STRING, lead_id STRING, booked_ts TIMESTAMP, status STRING, service STRING, revenue DOUBLE, event_date DATE\n) PARTITIONED BY (y INT, m INT, d INT)\nSTORED AS PARQUET TBLPROPERTIES('parquet.compress'='SNAPPY');\nINSERT OVERWRITE TABLE source.appointments_pq PARTITION (y,m,d)\nSELECT booking_id, lead_id, booked_ts, status, service, revenue,\n       DATE(booked_ts), YEAR(DATE(booked_ts)), MONTH(DATE(booked_ts)), DAY(DATE(booked_ts))\nFROM landing.appointments;\n\nDROP TABLE IF EXISTS source.ads_spend_pq;\nCREATE TABLE source.ads_spend_pq(\n  campaign STRING, dt DATE, spend DOUBLE, event_date DATE\n) PARTITIONED BY (y INT, m INT, d INT)\nSTORED AS PARQUET TBLPROPERTIES('parquet.compress'='SNAPPY');\nINSERT OVERWRITE TABLE source.ads_spend_pq PARTITION (y,m,d)\nSELECT campaign, dt, spend, dt,\n       YEAR(dt), MONTH(dt), DAY(dt)\nFROM landing.ads_spend;\nSQL\n/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/source_parquet.sql"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
@@ -122,11 +153,7 @@
       "label": "Hive: CSV → Parquet (No Spark) [copy]",
       "type": "process",
       "command": "docker",
-      "args": [
-        "compose","-p","hadoop","cp",
-        "${workspaceFolder}\\02_HdfsToSource\\csv_to_parquet.sql",
-        "hive-server:/tmp/"
-      ],
+      "args": ["compose", "-p", "hadoop", "cp", "${workspaceFolder}\\02_HdfsToSource\\csv_to_parquet.sql", "hive-server:/tmp/"],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "problemMatcher": []
     },
@@ -134,10 +161,7 @@
       "label": "Hive: run csv_to_parquet.sql",
       "type": "process",
       "command": "docker",
-      "args": [
-        "compose","-p","hadoop","exec","hive-server","bash","-lc",
-        "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/csv_to_parquet.sql"
-      ],
+      "args": ["compose", "-p", "hadoop", "exec", "hive-server", "bash", "-lc", "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/csv_to_parquet.sql"],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "dependsOn": "Hive: CSV → Parquet (No Spark) [copy]",
       "problemMatcher": []
@@ -149,192 +173,120 @@
       "type": "process",
       "command": "docker",
       "args": [
-        "compose","-p","hadoop","exec","namenode","bash","-lc",
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "namenode",
+        "bash",
+        "-lc",
         "/opt/hadoop-2.7.4/bin/hdfs dfs -mkdir -p /user/hive/warehouse /tmp; /opt/hadoop-2.7.4/bin/hdfs dfs -chmod -R 777 /user/hive/warehouse /tmp; /opt/hadoop-2.7.4/bin/hdfs dfs -ls -R /user/hive"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "problemMatcher": []
     },
 
- 
-
     /* 12) Spark (tuỳ chọn) – dùng file 01_ProdToHdfs/ingest_to_hdfs_parquet.py */
-   /* ====== SPARK: chạy hoàn toàn trong VS Code ====== */
+    /* ====== SPARK: chạy hoàn toàn trong VS Code ====== */
 
-/* (Tuỳ chọn) Kéo trước image Spark để chạy nhanh lần sau */
-{
-  "label": "Spark: Pull image",
-  "type": "process",
-  "command": "docker",
-  "args": ["pull","bde2020/spark-submit:2.4.5-hadoop2.7"],
-  "problemMatcher": []
-},
+    /* (Tuỳ chọn) Kéo trước image Spark để chạy nhanh lần sau */
+    {
+      "label": "Spark: Pull image",
+      "type": "process",
+      "command": "docker",
+      "args": ["pull", "bde2020/spark-submit:2.4.5-hadoop2.7"],
+      "problemMatcher": []
+    },
 
-/* FullLoad: cài python3 trong container rồi submit job PySpark
-   -> ghi Parquet vào hdfs://namenode:8020/source */
-{
-  "label": "Spark: FullLoad → /source parquet",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "run","--rm","-it",
-    "--network","hadoop_default",
-    "-v","${workspaceFolder}:/work",
-    "bde2020/spark-submit:2.4.5-hadoop2.7",
-    "bash","-lc",
-    "/spark/bin/spark-submit /work/01_ProdToHdfs/ingest_to_hdfs_parquet.py FullLoad"
-  ],
-  "problemMatcher": []
-},
-{
-  "label": "Spark: IncrementalLoad (append)",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "run","--rm","-it",
-    "--network","hadoop_default",
-    "-v","${workspaceFolder}:/work",
-    "bde2020/spark-submit:2.4.5-hadoop2.7",
-    "bash","-lc",
-    "/spark/bin/spark-submit /work/01_ProdToHdfs/ingest_to_hdfs_parquet.py IncrementalLoad"
-  ],
-  "problemMatcher": []
-}
-,
-{
-  "label": "HDFS: list /source",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "compose","-p","hadoop",
-    "-f","C:\\HadoopDocker\\docker-hive\\docker-compose.yml",
-    "exec","namenode","bash","-lc",
-    "/opt/hadoop-2.7.4/bin/hdfs dfs -ls -R /source | head -n 100"
-  ],
-  "problemMatcher": []
-}
-,
-
-/* (Tuỳ chọn) Xoá sạch output Spark để chạy lại từ đầu */
-{
-  "label": "HDFS: rm -r /source (reset Spark output)",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "compose","-p","hadoop","-f","C:\\HadoopDocker\\docker-hive\\docker-compose.yml",
-    "exec","namenode","bash","-lc",
-    "/opt/hadoop-2.7.4/bin/hdfs dfs -rm -r -skipTrash /source || true; /opt/hadoop-2.7.4/bin/hdfs dfs -mkdir -p /source; /opt/hadoop-2.7.4/bin/hdfs dfs -ls /"
-  ],
-  "problemMatcher": []
-},
-
-/* Đăng ký bảng Hive trỏ vào Parquet do Spark ghi ở /source */
-{
-  "label": "Hive: Source from Spark (copy)",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "compose","-p","hadoop","cp",
-    "${workspaceFolder}\\02_HdfsToSource\\source_from_spark.sql",
-    "hive-server:/tmp/"
-  ],
-  "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
-  "problemMatcher": []
-},
-{
-  "label": "Hive: run Source from Spark",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "compose","-p","hadoop","exec","hive-server","bash","-lc",
-    "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/source_from_spark.sql"
-  ],
-  "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
-  "dependsOn": "Hive: Source from Spark (copy)",
-  "problemMatcher": []
-},
-
-
-
-/* Pipeline 1: Spark FullLoad -> đăng ký Hive -> kiểm tra */
-{
-  "label": "Pipeline: Spark FullLoad → Hive register → Presto check",
-  "dependsOrder": "sequence",
-  "dependsOn": [
-    "Docker: Up (Hadoop+Hive)",
-    "Spark: Pull image",
-    "Spark: FullLoad → /source parquet",
-    "HDFS: list /source",
-    "Hive: Source from Spark (copy)",
-    "Hive: run Source from Spark",
-    "Presto: SHOW TABLES (source)",
-    "Presto: COUNT messages (source)"
-  ]
-},
-{
-  "label": "Presto: SHOW TABLES (source)",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "run","--rm","--network","hadoop_default",
-    "eclipse-temurin:8-jre","bash","-lc",
-    "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --catalog hive --schema source --execute 'SHOW TABLES'"
-  ],
-  "problemMatcher": []
-},
-{
-  "label": "Presto: COUNT messages_src",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "run","--rm","--network","hadoop_default",
-    "eclipse-temurin:8-jre","bash","-lc",
-    "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --catalog hive --schema source --execute 'SELECT COUNT(*) FROM messages_src'"
-  ]
-}
-,
-
-/* Pipeline 2: Spark Incremental -> xem output */
-{
-  "label": "Pipeline: Spark Incremental → verify",
-  "dependsOrder": "sequence",
-  "dependsOn": [
-    "Docker: Up (Hadoop+Hive)",
-    "Spark: Pull image",
-    "Spark: IncrementalLoad (append)",
-    "HDFS: list /source"
-  ]
-}
-
-,{
-  "label": "HDFS: list /source",
-  "type": "process",
-  "command": "docker",
-  "args": [
-    "compose","-p","hadoop","-f","C:\\HadoopDocker\\docker-hive\\docker-compose.yml",
-    "exec","namenode","bash","-lc",
-    "/opt/hadoop-2.7.4/bin/hdfs dfs -ls -R /source | head -n 100"
-  ]
-},
+    /* FullLoad: cài python3 trong container rồi submit job PySpark
+       -> ghi Parquet vào hdfs://namenode:8020/source */
+    {
+      "label": "Spark: FullLoad → /source parquet",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-it",
+        "--network",
+        "hadoop_default",
+        "-v",
+        "${workspaceFolder}:/work",
+        "bde2020/spark-submit:2.4.5-hadoop2.7",
+        "bash",
+        "-lc",
+        "/spark/bin/spark-submit /work/01_ProdToHdfs/ingest_to_hdfs_parquet.py FullLoad"
+      ],
+      "problemMatcher": []
+    },
     {
       "label": "Spark: IncrementalLoad (append)",
       "type": "process",
       "command": "docker",
       "args": [
-        "run","--rm","-it","--network","hadoop_default","-v","${workspaceFolder}:/work",
-        "bde2020/spark-submit:2.4.5-hadoop2.7","bash","-lc",
-        "/spark/bin/spark-submit /work/01_ProdToHdfs/ingest_to_hdfs_parquet.py IncrementalLoad; /hadoop-2.7.4/bin/hdfs dfs -ls -R /source | head -n 50"
+        "run",
+        "--rm",
+        "-it",
+        "--network",
+        "hadoop_default",
+        "-v",
+        "${workspaceFolder}:/work",
+        "bde2020/spark-submit:2.4.5-hadoop2.7",
+        "bash",
+        "-lc",
+        "/spark/bin/spark-submit /work/01_ProdToHdfs/ingest_to_hdfs_parquet.py IncrementalLoad"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "HDFS: list /source",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-p",
+        "hadoop",
+        "-f",
+        "C:\\HadoopDocker\\docker-hive\\docker-compose.yml",
+        "exec",
+        "namenode",
+        "bash",
+        "-lc",
+        "/opt/hadoop-2.7.4/bin/hdfs dfs -ls -R /source | head -n 100"
       ],
       "problemMatcher": []
     },
 
-    /* 12b) Đăng ký bảng Hive trỏ vào /source do Spark tạo */
+    /* (Tuỳ chọn) Xoá sạch output Spark để chạy lại từ đầu */
+    {
+      "label": "HDFS: rm -r /source (reset Spark output)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-p",
+        "hadoop",
+        "-f",
+        "C:\\HadoopDocker\\docker-hive\\docker-compose.yml",
+        "exec",
+        "namenode",
+        "bash",
+        "-lc",
+        "/opt/hadoop-2.7.4/bin/hdfs dfs -rm -r -skipTrash /source || true; /opt/hadoop-2.7.4/bin/hdfs dfs -mkdir -p /source; /opt/hadoop-2.7.4/bin/hdfs dfs -ls /"
+      ],
+      "problemMatcher": []
+    },
+
+    /* Đăng ký bảng Hive trỏ vào Parquet do Spark ghi ở /source */
     {
       "label": "Hive: Source from Spark (copy)",
       "type": "process",
       "command": "docker",
       "args": [
-        "compose","-p","hadoop","cp",
+        "compose",
+        "-p",
+        "hadoop",
+        "cp",
         "${workspaceFolder}\\02_HdfsToSource\\source_from_spark.sql",
         "hive-server:/tmp/"
       ],
@@ -346,7 +298,144 @@
       "type": "process",
       "command": "docker",
       "args": [
-        "compose","-p","hadoop","exec","hive-server","bash","-lc",
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "hive-server",
+        "bash",
+        "-lc",
+        "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/source_from_spark.sql"
+      ],
+      "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
+      "dependsOn": "Hive: Source from Spark (copy)",
+      "problemMatcher": []
+    },
+
+    /* Pipeline 1: Spark FullLoad -> đăng ký Hive -> kiểm tra */
+    {
+      "label": "Pipeline: Spark FullLoad → Hive register → Presto check",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Docker: Up (Hadoop+Hive)",
+        "Spark: Pull image",
+        "Spark: FullLoad → /source parquet",
+        "HDFS: list /source",
+        "Hive: Source from Spark (copy)",
+        "Hive: run Source from Spark",
+        "Presto: SHOW TABLES (source)",
+        "Presto: COUNT messages (source)"
+      ]
+    },
+    {
+      "label": "Presto: SHOW TABLES (source)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --catalog hive --schema source --execute 'SHOW TABLES'"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Presto: COUNT messages_src",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar && java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --catalog hive --schema source --execute 'SELECT COUNT(*) FROM messages_src'"
+      ]
+    },
+
+    /* Pipeline 2: Spark Incremental -> xem output */
+    {
+      "label": "Pipeline: Spark Incremental → verify",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Docker: Up (Hadoop+Hive)",
+        "Spark: Pull image",
+        "Spark: IncrementalLoad (append)",
+        "HDFS: list /source"
+      ]
+    },
+
+    {
+      "label": "HDFS: list /source",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-p",
+        "hadoop",
+        "-f",
+        "C:\\HadoopDocker\\docker-hive\\docker-compose.yml",
+        "exec",
+        "namenode",
+        "bash",
+        "-lc",
+        "/opt/hadoop-2.7.4/bin/hdfs dfs -ls -R /source | head -n 100"
+      ]
+    },
+    {
+      "label": "Spark: IncrementalLoad (append)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-it",
+        "--network",
+        "hadoop_default",
+        "-v",
+        "${workspaceFolder}:/work",
+        "bde2020/spark-submit:2.4.5-hadoop2.7",
+        "bash",
+        "-lc",
+        "/spark/bin/spark-submit /work/01_ProdToHdfs/ingest_to_hdfs_parquet.py IncrementalLoad; /hadoop-2.7.4/bin/hdfs dfs -ls -R /source | head -n 50"
+      ],
+      "problemMatcher": []
+    },
+
+    /* 12b) Đăng ký bảng Hive trỏ vào /source do Spark tạo */
+    {
+      "label": "Hive: Source from Spark (copy)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-p",
+        "hadoop",
+        "cp",
+        "${workspaceFolder}\\02_HdfsToSource\\source_from_spark.sql",
+        "hive-server:/tmp/"
+      ],
+      "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Hive: run Source from Spark",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "hive-server",
+        "bash",
+        "-lc",
         "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/source_from_spark.sql"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
@@ -359,11 +448,7 @@
       "label": "Hive: Source tables",
       "type": "process",
       "command": "docker",
-      "args": [
-        "compose","-p","hadoop","cp",
-        "${workspaceFolder}\\02_HdfsToSource\\create_src_tables.sql",
-        "hive-server:/tmp/"
-      ],
+      "args": ["compose", "-p", "hadoop", "cp", "${workspaceFolder}\\02_HdfsToSource\\create_src_tables.sql", "hive-server:/tmp/"],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "problemMatcher": []
     },
@@ -371,10 +456,7 @@
       "label": "Hive: run Source tables",
       "type": "process",
       "command": "docker",
-      "args": [
-        "compose","-p","hadoop","exec","hive-server","bash","-lc",
-        "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/create_src_tables.sql"
-      ],
+      "args": ["compose", "-p", "hadoop", "exec", "hive-server", "bash", "-lc", "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/create_src_tables.sql"],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "dependsOn": "Hive: Source tables",
       "problemMatcher": []
@@ -383,10 +465,19 @@
       "label": "Hive: Curated",
       "type": "process",
       "command": "docker",
+      "args": ["compose", "-p", "hadoop", "cp", "${workspaceFolder}\\03_SourceToCurated\\curated.sql", "hive-server:/tmp/"],
+      "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Hive: run Curated SQL",
+      "type": "process",
+      "command": "docker",
       "args": [
-        "compose","-p","hadoop","cp",
-        "${workspaceFolder}\\03_SourceToCurated\\curated.sql",
-        "hive-server:/tmp/"
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/curated.sql"
       ],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "problemMatcher": []
@@ -395,10 +486,7 @@
       "label": "Hive: run Curated",
       "type": "process",
       "command": "docker",
-      "args": [
-        "compose","-p","hadoop","exec","hive-server","bash","-lc",
-        "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/curated.sql"
-      ],
+      "args": ["compose", "-p", "hadoop", "exec", "hive-server", "bash", "-lc", "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/curated.sql"],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "dependsOn": "Hive: Curated",
       "problemMatcher": []
@@ -407,11 +495,7 @@
       "label": "Hive: Consumption",
       "type": "process",
       "command": "docker",
-      "args": [
-        "compose","-p","hadoop","cp",
-        "${workspaceFolder}\\04_CuratedToConsumption\\consumption.sql",
-        "hive-server:/tmp/"
-      ],
+      "args": ["compose", "-p", "hadoop", "cp", "${workspaceFolder}\\04_CuratedToConsumption\\consumption.sql", "hive-server:/tmp/"],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "problemMatcher": []
     },
@@ -419,10 +503,7 @@
       "label": "Hive: run Consumption",
       "type": "process",
       "command": "docker",
-      "args": [
-        "compose","-p","hadoop","exec","hive-server","bash","-lc",
-        "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/consumption.sql"
-      ],
+      "args": ["compose", "-p", "hadoop", "exec", "hive-server", "bash", "-lc", "/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/consumption.sql"],
       "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
       "dependsOn": "Hive: Consumption",
       "problemMatcher": []
@@ -434,7 +515,10 @@
       "type": "process",
       "command": "powershell",
       "args": [
-        "-NoProfile","-ExecutionPolicy","Bypass","-Command",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
         "$ports = 50070,9870; $opened=$false; foreach($p in $ports){ try{ (Invoke-WebRequest -UseBasicParsing -Uri \"http://localhost:$p\" -TimeoutSec 2) | Out-Null; Start-Process \"http://localhost:$p\"; $opened=$true; break }catch{} }; if(-not $opened){ Start-Process 'http://localhost:50070' }; Start-Process 'http://localhost:8088'; Start-Process 'http://localhost:8080';"
       ],
       "problemMatcher": []
@@ -490,33 +574,184 @@
       ]
     },
     {
-  "label": "Airflow: Init (lần đầu)",
-  "type": "process",
-  "command": "docker",
-  "args": ["compose","-p","airflow","-f","${workspaceFolder}\\airflow\\docker-compose.yml","up","airflow-init"],
-  "problemMatcher": []
-},
-{
-  "label": "Airflow: Up",
-  "type": "process",
-  "command": "docker",
-  "args": ["compose","-p","airflow","-f","${workspaceFolder}\\airflow\\docker-compose.yml","up","-d"],
-  "problemMatcher": []
-},
-{
-  "label": "Airflow: Down",
-  "type": "process",
-  "command": "docker",
-  "args": ["compose","-p","airflow","-f","${workspaceFolder}\\airflow\\docker-compose.yml","down","-v"],
-  "problemMatcher": []
-},
-{
-  "label": "Airflow: Open UI",
-  "type": "process",
-  "command": "powershell",
-  "args": ["-NoProfile","-Command","Start-Process 'http://localhost:8081'"],
-  "problemMatcher": []
-}
-
+      "label": "Airflow: Init (lần đầu)",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-p", "airflow", "-f", "${workspaceFolder}\\airflow\\docker-compose.yml", "up", "airflow-init"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Airflow: Up",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-p", "airflow", "-f", "${workspaceFolder}\\airflow\\docker-compose.yml", "up", "-d"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Airflow: Down",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "-p", "airflow", "-f", "${workspaceFolder}\\airflow\\docker-compose.yml", "down", "-v"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Airflow: Open UI",
+      "type": "process",
+      "command": "powershell",
+      "args": ["-NoProfile", "-Command", "Start-Process 'http://localhost:8081'"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Presto: Source breakdown (CRM leads.csv)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--network",
+        "hadoop_default",
+        "eclipse-temurin:8-jre",
+        "bash",
+        "-lc",
+        "wget -qO /tmp/presto.jar https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.181/presto-cli-0.181-executable.jar; cat >/tmp/q.sql <<'SQL'\nSELECT COALESCE(NULLIF(trim(source),''),'Unknown') AS src,\n       COUNT(*) AS leads\nFROM landing.crm_leads\nGROUP BY 1\nORDER BY leads DESC;\nSQL\n( java -jar /tmp/presto.jar --server http://presto-coordinator:8080 --catalog hive --schema landing --file /tmp/q.sql ) || java -jar /tmp/presto.jar --server http://host.docker.internal:8080 --catalog hive --schema landing --file /tmp/q.sql"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Hive: Create landing.crm_leads (CSV external)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-p",
+        "hadoop",
+        "exec",
+        "hive-server",
+        "bash",
+        "-lc",
+        "cat >/tmp/landing_crm_leads.sql <<'SQL'\nCREATE DATABASE IF NOT EXISTS landing;\n\nDROP TABLE IF EXISTS landing.crm_leads;\nCREATE EXTERNAL TABLE landing.crm_leads (\n  idx INT, account_id STRING, lead_owner STRING, first_name STRING, last_name STRING,\n  company STRING, phone_1 STRING, phone_2 STRING, email_1 STRING, email_2 STRING,\n  website STRING, source STRING, deal_stage STRING, notes STRING\n)\nROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'\nWITH SERDEPROPERTIES ('separatorChar',',')\nSTORED AS TEXTFILE\nLOCATION '/landing/leads'\nTBLPROPERTIES('skip.header.line.count'='1');\nSQL\n/opt/hive/bin/beeline -u jdbc:hive2://localhost:10000 -f /tmp/landing_crm_leads.sql"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "KPI 1: Leads by Channel",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u 'jdbc:hive2://localhost:10000' -e 'SELECT channel, COUNT(*) AS total_leads FROM curated.f_interactions GROUP BY channel ORDER BY total_leads DESC;'"
+      ],
+      "options": {
+        "cwd": "C:\\HadoopDocker\\docker-hive"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "KPI 2: Leads by Campaign",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u 'jdbc:hive2://localhost:10000' -e 'SELECT campaign, COUNT(*) AS total_leads FROM curated.f_interactions GROUP BY campaign ORDER BY total_leads DESC;'"
+      ],
+      "options": {
+        "cwd": "C:\\HadoopDocker\\docker-hive"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "KPI 3: Peak Hour (Golden Hour)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u 'jdbc:hive2://localhost:10000' -e \"SELECT HOUR(created_at_ts) AS hour_of_day, COUNT(*) AS leads_in_that_hour FROM curated.f_interactions WHERE created_at_ts IS NOT NULL GROUP BY HOUR(created_at_ts) ORDER BY leads_in_that_hour DESC;\""
+      ],
+      "options": {
+        "cwd": "C:\\HadoopDocker\\docker-hive"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Consumption: Build Marketing Fact Table",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u 'jdbc:hive2://localhost:10000' -e \"CREATE DATABASE IF NOT EXISTS consumption; DROP TABLE IF EXISTS consumption.f_marketing; CREATE TABLE consumption.f_marketing STORED AS PARQUET AS SELECT CAST(lead_id AS INT) AS lead_id, CASE WHEN source IS NULL OR source = '' THEN 'Unknown' ELSE source END AS marketing_source, channel AS sales_owner, campaign, CASE WHEN created_at IS NOT NULL AND created_at <> '' THEN CAST(from_unixtime(unix_timestamp(created_at)) AS timestamp) END AS created_at_ts FROM landing.leads_csv;\""
+      ],
+      "options": { "cwd": "C:\\HadoopDocker\\docker-hive" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Consumption: Preview 10 rows",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u 'jdbc:hive2://localhost:10000' -e 'SELECT lead_id, sales_owner, campaign, created_at_ts FROM consumption.f_marketing LIMIT 10;'"
+      ],
+      "options": {
+        "cwd": "C:\\HadoopDocker\\docker-hive"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "KPI: Leads per Sales Owner",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u 'jdbc:hive2://localhost:10000' -e 'SELECT sales_owner, COUNT(*) AS total_leads FROM consumption.f_marketing GROUP BY sales_owner ORDER BY total_leads DESC;'"
+      ],
+      "options": {
+        "cwd": "C:\\HadoopDocker\\docker-hive"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "KPI: Leads per Campaign",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "hive-server",
+        "bash", "-lc",
+        "/opt/hive/bin/beeline -u 'jdbc:hive2://localhost:10000' -e 'SELECT campaign, COUNT(*) AS total_leads FROM consumption.f_marketing GROUP BY campaign ORDER BY total_leads DESC;'"
+      ],
+      "options": {
+        "cwd": "C:\\HadoopDocker\\docker-hive"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "KPI: Leads per Sales Owner (Presto)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose", "-p", "hadoop",
+        "exec", "presto",
+        "bash", "-lc",
+        "/opt/presto/bin/presto --server http://presto-coordinator:8080 --catalog hive --schema consumption --execute \"SELECT sales_owner, COUNT(DISTINCT lead_id) AS total_leads FROM consumption.f_marketing GROUP BY sales_owner ORDER BY total_leads DESC;\""
+      ],
+      "options": {
+        "cwd": "C:\\HadoopDocker\\docker-hive"
+      },
+      "problemMatcher": []
+    }
+        
   ]
 }
+
