@@ -184,11 +184,7 @@ Curated layer lấy từ `source.*_pq` và sinh ra các bảng rõ nghĩa nghi�
 
 #### Cách chạy
 
-1. **Hive: Curated**  
-   - Task copy file `03_SourceToCurated/curated.sql`
-     vào container `hive-server:/tmp/curated.sql`.
-
-2. **Hive: run Curated**  
+1. **Hive: Curated layer (build curated)  **  
    
 
 #### Kiểm tra Curated layer bằng Presto
